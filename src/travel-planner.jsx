@@ -1340,7 +1340,7 @@ function ItineraryMap({trip}) {
 }
 
 // ── Trip Switcher ─────────────────────────────────────────────────────────────
-function TripSwitcher({trips,active,onSelect,onCreate}) {
+function TripSwitcher({trips,active,onSelect,onCreate,onDelete}) {
   const [creating,setCreating]=useState(false);
   const [form,setForm]=useState({name:"",emoji:"✈️",startDate:today(),endDate:today()});
   const save=()=>{
@@ -1352,7 +1352,10 @@ function TripSwitcher({trips,active,onSelect,onCreate}) {
   return (
     <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
       {trips.map((t,i)=>(
-        <button key={t.id} onClick={()=>onSelect(i)} style={{padding:"4px 13px",borderRadius:16,fontSize:12,cursor:"pointer",fontFamily:"inherit",background:active===i?"rgba(255,255,255,.18)":"transparent",color:"rgba(255,255,255,.9)",border:`1px solid ${active===i?"rgba(255,255,255,.5)":"rgba(255,255,255,.2)"}`,transition:"all .18s"}}>{t.emoji} {t.name}</button>
+        <div key={t.id} style={{display:"flex",alignItems:"center",gap:2}}>
+          <button onClick={()=>onSelect(i)} style={{padding:"4px 13px",borderRadius:"16px 0 0 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit",background:active===i?"rgba(255,255,255,.18)":"transparent",color:"rgba(255,255,255,.9)",border:`1px solid ${active===i?"rgba(255,255,255,.5)":"rgba(255,255,255,.2)"}`,borderRight:"none",transition:"all .18s"}}>{t.emoji} {t.name}</button>
+          {trips.length>1&&<button onClick={()=>{ if(window.confirm(`Delete "${t.name}"?`)) onDelete(i); }} style={{padding:"4px 7px",borderRadius:"0 16px 16px 0",fontSize:11,cursor:"pointer",fontFamily:"inherit",background:active===i?"rgba(255,255,255,.18)":"transparent",color:"rgba(255,255,255,.5)",border:`1px solid ${active===i?"rgba(255,255,255,.5)":"rgba(255,255,255,.2)"}`,transition:"all .18s"}}>×</button>}
+        </div>
       ))}
       {creating?(
         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",borderRadius:10,padding:"7px 10px"}}>
@@ -1472,7 +1475,14 @@ function App() {
           <span style={{fontSize:17,fontWeight:700,fontFamily:"'DM Serif Display',Georgia,serif",color:"#fff",letterSpacing:.3,flexShrink:0}}>Sabrina's Command Center</span>
           <div style={{width:1,height:18,background:"rgba(255,255,255,.15)",flexShrink:0}}/>
           <div style={{flex:1,overflow:"hidden"}}>
-            <TripSwitcher trips={data.trips} active={data.activeTrip} onSelect={i=>persist({...data,activeTrip:i})} onCreate={t=>persist({...data,trips:[...data.trips,t],activeTrip:data.trips.length})}/>
+            <TripSwitcher trips={data.trips} active={data.activeTrip}
+              onSelect={i=>persist({...data,activeTrip:i})}
+              onCreate={t=>persist({...data,trips:[...data.trips,t],activeTrip:data.trips.length})}
+              onDelete={i=>{
+                const trips=data.trips.filter((_,idx)=>idx!==i);
+                const activeTrip=Math.min(data.activeTrip,trips.length-1);
+                persist({...data,trips,activeTrip});
+              }}/>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
             {saving?<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>saving…</span>:<><span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block"}}/><span style={{fontSize:11,color:"rgba(255,255,255,.4)"}}>live sync</span></>}
