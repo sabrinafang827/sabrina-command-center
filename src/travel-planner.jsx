@@ -1364,9 +1364,11 @@ export default function App() {
     });
   },[]);
 
-  // Poll Firebase every 5s for changes from the other person
+  // Poll Firebase every 8s for changes from the other person
+  const isSaving = useRef(false);
   useEffect(()=>{
     const interval = setInterval(async()=>{
+      if(isSaving.current) return; // don't overwrite while saving
       try {
         const res = await fetch(`${FIREBASE_URL}/${DB_KEY}.json`);
         if(!res.ok) return;
@@ -1378,26 +1380,36 @@ export default function App() {
           setData(remote);
         }
       } catch(e){}
-    }, 5000);
+    }, 8000);
     return ()=>clearInterval(interval);
   },[]);
 
   const persist=useCallback(async nd=>{
+    isSaving.current = true;
     setData(nd);
     setSaving(true);
     const str = JSON.stringify(nd);
-    lastSaved.current = str; // prevent echo on next poll
+    lastSaved.current = str;
     await saveData(nd);
     setSaving(false);
+    setTimeout(()=>{ isSaving.current = false; }, 3000); // wait 3s before polling again
   },[]);
 
   if(!data) return <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",color:C.textSoft,fontFamily:"Georgia,serif",fontSize:16}}>Loading…</div>;
 
-  const trip=data.trips[data.activeTrip]||data.trips[0];
+  const trip=data.trips?.[data.activeTrip]||data.trips?.[0];
+  if(!trip) return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}}>
+      <p style={{color:C.textSoft,fontSize:16}}>Something went wrong loading your trip.</p>
+      <button onClick={async()=>{ await fetch(`${FIREBASE_URL}/${DB_KEY}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(SEED())}); window.location.reload(); }}
+        style={{background:C.navy,color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontSize:14,cursor:"pointer"}}>Reset & reload</button>
+    </div>
+  );
+
   const setTrip=t=>persist({...data,trips:data.trips.map((x,i)=>i===data.activeTrip?t:x)});
   const currObj=CURRENCIES.find(c=>c.code===(trip.currency||"USD"))||CURRENCIES[0];
   const currSymbol=currObj.symbol;
-  const todoLeft=trip.days.flatMap(d=>d.todos).filter(t=>!t.done).length;
+  const todoLeft=(trip.days||[]).flatMap(d=>d.todos||[]).filter(t=>t&&!t.done).length;
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Nunito','Helvetica Neue',sans-serif"}}>
