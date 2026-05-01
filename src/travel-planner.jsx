@@ -39,6 +39,7 @@ const today = () => new Date().toISOString().slice(0,10);
 
 const CURRENCIES = [
   {code:"USD",symbol:"$",name:"US Dollar"},
+  {code:"TWD",symbol:"NT$",name:"Taiwan Dollar"},
   {code:"EUR",symbol:"€",name:"Euro"},
   {code:"GBP",symbol:"£",name:"British Pound"},
   {code:"JPY",symbol:"¥",name:"Japanese Yen"},
