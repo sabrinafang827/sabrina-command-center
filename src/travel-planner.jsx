@@ -636,45 +636,7 @@ function ItineraryHub({trip,onUpdate,currSymbol}) {
               ):(
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={()=>setAddingSpot(day.id)} style={{background:"none",border:`1px dashed ${C.border}`,borderRadius:8,padding:"6px 14px",fontSize:12,color:C.textSoft,cursor:"pointer",fontFamily:"inherit"}}>+ Add spot</button>
-                  <button onClick={()=>setChatDay(chatDay===day.id?null:day.id)} style={{background:"none",border:`1px dashed ${C.cobaltLight}`,borderRadius:8,padding:"6px 14px",fontSize:12,color:C.cobalt,cursor:"pointer",fontFamily:"inherit"}}>✦ AI chat</button>
                 </div>
-              )}
-
-              {/* AI Chat */}
-              {chatDay===day.id&&(
-                <Card style={{overflow:"hidden",border:`1px solid ${C.cobaltLight}`}}>
-                  <div style={{background:C.navy,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{width:24,height:24,borderRadius:"50%",background:C.cobalt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>✦</span>
-                      <span style={{fontSize:13,fontWeight:600,color:"#fff"}}>AI Assistant — {day.title}</span>
-                    </div>
-                    <button onClick={()=>setChatDay(null)} style={{background:"none",border:"none",color:"rgba(255,255,255,.45)",cursor:"pointer",fontSize:16}}>×</button>
-                  </div>
-                  <div style={{height:220,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10,background:C.bg}}>
-                    {!(chatMsgs[day.id]?.length)&&(
-                      <div style={{textAlign:"center",padding:"24px 0",color:C.textSoft,fontSize:13,lineHeight:1.6}}>
-                        Ask me anything about <strong style={{color:C.cobalt}}>{day.title}</strong>!<br/>I can suggest spots, restaurants, tips, or add places directly to your day.
-                      </div>
-                    )}
-                    {(chatMsgs[day.id]||[]).map((m,i)=>(
-                      <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                        <div style={{maxWidth:"80%",padding:"9px 13px",borderRadius:m.role==="user"?"12px 12px 2px 12px":"12px 12px 12px 2px",background:m.role==="user"?C.navy:C.white,color:m.role==="user"?"#fff":C.text,fontSize:13,lineHeight:1.5,border:m.role==="assistant"?`1px solid ${C.border}`:"none"}}>
-                          {m.text}
-                        </div>
-                      </div>
-                    ))}
-                    {aiLoading===day.id&&(
-                      <div style={{display:"flex",gap:5,padding:"4px 2px"}}>
-                        {[0,1,2].map(i=><span key={i} style={{width:7,height:7,borderRadius:"50%",background:C.cobalt,display:"inline-block",animation:`bounce .9s ${i*.18}s infinite`}}/>)}
-                      </div>
-                    )}
-                    <div ref={chatEndRef}/>
-                  </div>
-                  <div style={{padding:"10px 12px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,background:C.white}}>
-                    <Inp placeholder="Ask about this day…" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendChat(day)} style={{flex:1}}/>
-                    <PBtn onClick={()=>sendChat(day)} style={{fontSize:12,padding:"7px 14px"}}>Send</PBtn>
-                  </div>
-                </Card>
               )}
             </div>
           </div>
