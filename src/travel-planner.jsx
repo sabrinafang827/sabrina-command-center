@@ -1,4 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Component } from "react";
+
+class ErrorBoundary extends Component {
+  state = {hasError:false};
+  static getDerivedStateFromError() { return {hasError:true}; }
+  componentDidCatch(e) { console.error("App crashed:",e); }
+  reset() {
+    fetch(`${FIREBASE_URL}/${DB_KEY}.json`,{method:"DELETE"})
+      .then(()=>{ this.setState({hasError:false}); window.location.reload(); });
+  }
+  render() {
+    if(this.state.hasError) return (
+      <div style={{minHeight:"100vh",background:"#eef1f8",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,fontFamily:"sans-serif"}}>
+        <p style={{color:"#1a2952",fontSize:16,fontWeight:600}}>Oops! Something went wrong.</p>
+        <button onClick={()=>this.reset()} style={{background:"#1a2952",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:14,cursor:"pointer"}}>
+          Reset & reload
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ── Palette: Option D ─────────────────────────────────────────────────────────
 const C = {
@@ -66,16 +87,33 @@ async function loadData() {
     const res = await fetch(`${FIREBASE_URL}/${DB_KEY}.json`);
     if(!res.ok) return null;
     const d = await res.json();
-    return d || null;
+    if(!d || !d.trips || !Array.isArray(d.trips) || d.trips.length===0) return null;
+    // Ensure all trips have required fields
+    d.trips = d.trips.map(t=>({
+      ...t,
+      days: (t.days||[]).map(day=>({
+        ...day,
+        spots: (day.spots||[]).map(s=>({...s,lat:s.lat||0,lng:s.lng||0,duration:s.duration||"",addedTodo:s.addedTodo||false,loggedExpense:s.loggedExpense||false})),
+        todos: (day.todos||[]).map(td=>({...td,done:td.done||false,category:td.category||"Other",deadline:td.deadline||""})),
+      })),
+      expenses: (t.expenses||[]),
+      notes: (t.notes||[]).map(n=>({...n,votes:n.votes||[]})),
+      people: t.people||["Me","Partner"],
+      exchangeRates: t.exchangeRates||{},
+      noteCats: t.noteCats||NOTE_CATS,
+    }));
+    return d;
   } catch(e) { console.error("Load error",e); return null; }
 }
 
 async function saveData(d) {
   try {
+    // Strip undefined values by round-tripping through JSON
+    const clean = JSON.parse(JSON.stringify(d));
     await fetch(`${FIREBASE_URL}/${DB_KEY}.json`, {
       method: "PUT",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(d)
+      body: JSON.stringify(clean)
     });
   } catch(e) { console.error("Save error",e); }
 }
@@ -173,22 +211,24 @@ const SectionHead = ({children,style}) => (
 // ── Trip Settings Modal ───────────────────────────────────────────────────────
 function TripSettings({trip,onUpdate,onClose}) {
   const [form,setForm] = useState({
-    name:trip.name, emoji:trip.emoji,
-    startDate:trip.startDate, endDate:trip.endDate,
+    name:trip.name||"My Trip",
+    emoji:trip.emoji||"✈️",
+    startDate:trip.startDate||today(),
+    endDate:trip.endDate||today(),
     currency:trip.currency||"USD",
-    people:[...trip.people],
+    people:[...(trip.people||["Me","Partner"])],
   });
   const save = () => {
-    const updated = {
+    if(!form.name.trim()) return;
+    onUpdate({
       ...trip,
-      name: form.name||trip.name,
-      emoji: form.emoji||trip.emoji,
-      startDate: form.startDate||trip.startDate,
-      endDate: form.endDate||trip.endDate,
-      currency: form.currency||trip.currency||"USD",
-      people: form.people.filter(p=>p.trim())||trip.people,
-    };
-    onUpdate(updated);
+      name:form.name.trim(),
+      emoji:form.emoji||"✈️",
+      startDate:form.startDate||trip.startDate,
+      endDate:form.endDate||trip.endDate,
+      currency:form.currency||"USD",
+      people:form.people.filter(p=>p.trim()).length>0 ? form.people.filter(p=>p.trim()) : trip.people,
+    });
     onClose();
   };
   const updatePerson = (i,v) => { const p=[...form.people]; p[i]=v; setForm(f=>({...f,people:p})); };
@@ -1348,7 +1388,7 @@ function TripSwitcher({trips,active,onSelect,onCreate}) {
 }
 
 // ── App Root ──────────────────────────────────────────────────────────────────
-export default function App() {
+function App() {
   const [data,setData]=useState(null);
   const [tab,setTab]=useState("itinerary");
   const [saving,setSaving]=useState(false);
@@ -1493,4 +1533,8 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+export default function Root() {
+  return <ErrorBoundary><App/></ErrorBoundary>;
 }
