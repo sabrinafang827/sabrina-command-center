@@ -178,7 +178,19 @@ function TripSettings({trip,onUpdate,onClose}) {
     currency:trip.currency||"USD",
     people:[...trip.people],
   });
-  const save = () => { onUpdate({...trip,...form}); onClose(); };
+  const save = () => {
+    const updated = {
+      ...trip,
+      name: form.name||trip.name,
+      emoji: form.emoji||trip.emoji,
+      startDate: form.startDate||trip.startDate,
+      endDate: form.endDate||trip.endDate,
+      currency: form.currency||trip.currency||"USD",
+      people: form.people.filter(p=>p.trim())||trip.people,
+    };
+    onUpdate(updated);
+    onClose();
+  };
   const updatePerson = (i,v) => { const p=[...form.people]; p[i]=v; setForm(f=>({...f,people:p})); };
   const addPerson = () => setForm(f=>({...f,people:[...f.people,""]}));
   const removePerson = (i) => setForm(f=>({...f,people:f.people.filter((_,j)=>j!==i)}));
