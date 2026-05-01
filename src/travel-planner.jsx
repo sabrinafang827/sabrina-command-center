@@ -82,27 +82,48 @@ const fmt = (n, symbol="$") => {
 const FIREBASE_URL = "https://sabrina-command-center-default-rtdb.firebaseio.com";
 const DB_KEY = "commandcenter";
 
+function sanitize(d) {
+  if(!d||!d.trips||!Array.isArray(d.trips)||d.trips.length===0) return null;
+  return {
+    ...d,
+    activeTrip: d.activeTrip||0,
+    trips: d.trips.map(t=>({
+      ...t,
+      name: t.name||"My Trip",
+      emoji: t.emoji||"✈️",
+      startDate: t.startDate||today(),
+      endDate: t.endDate||today(),
+      people: Array.isArray(t.people)&&t.people.length>0?t.people:["Me","Partner"],
+      budget: t.budget||0,
+      currency: t.currency||"USD",
+      exchangeRates: t.exchangeRates||{},
+      noteCats: Array.isArray(t.noteCats)&&t.noteCats.length>0?t.noteCats:NOTE_CATS,
+      expenses: Array.isArray(t.expenses)?t.expenses:[],
+      notes: Array.isArray(t.notes)?t.notes.map(n=>({...n,votes:Array.isArray(n.votes)?n.votes:[]})):[],
+      days: Array.isArray(t.days)?t.days.map(day=>({
+        ...day,
+        title:day.title||"",
+        travelTime:day.travelTime||"",
+        spots:Array.isArray(day.spots)?day.spots.map(s=>({
+          ...s,lat:s.lat||0,lng:s.lng||0,duration:s.duration||"",
+          cost:s.cost||0,paidBy:s.paidBy||"",split:s.split||"50/50",
+          addedTodo:!!s.addedTodo,loggedExpense:!!s.loggedExpense
+        })):[],
+        todos:Array.isArray(day.todos)?day.todos.filter(Boolean).map(td=>({
+          ...td,text:td.text||"",done:!!td.done,
+          category:td.category||"Other",deadline:td.deadline||""
+        })):[],
+      })):[],
+    }))
+  };
+}
+
 async function loadData() {
   try {
     const res = await fetch(`${FIREBASE_URL}/${DB_KEY}.json`);
     if(!res.ok) return null;
     const d = await res.json();
-    if(!d || !d.trips || !Array.isArray(d.trips) || d.trips.length===0) return null;
-    // Ensure all trips have required fields
-    d.trips = d.trips.map(t=>({
-      ...t,
-      days: (t.days||[]).map(day=>({
-        ...day,
-        spots: (day.spots||[]).map(s=>({...s,lat:s.lat||0,lng:s.lng||0,duration:s.duration||"",addedTodo:s.addedTodo||false,loggedExpense:s.loggedExpense||false})),
-        todos: (day.todos||[]).map(td=>({...td,done:td.done||false,category:td.category||"Other",deadline:td.deadline||""})),
-      })),
-      expenses: (t.expenses||[]),
-      notes: (t.notes||[]).map(n=>({...n,votes:n.votes||[]})),
-      people: t.people||["Me","Partner"],
-      exchangeRates: t.exchangeRates||{},
-      noteCats: t.noteCats||NOTE_CATS,
-    }));
-    return d;
+    return sanitize(d);
   } catch(e) { console.error("Load error",e); return null; }
 }
 
@@ -1420,11 +1441,13 @@ function App() {
   const isSaving = useRef(false);
   useEffect(()=>{
     const interval = setInterval(async()=>{
-      if(isSaving.current) return; // don't overwrite while saving
+      if(isSaving.current) return;
       try {
         const res = await fetch(`${FIREBASE_URL}/${DB_KEY}.json`);
         if(!res.ok) return;
-        const remote = await res.json();
+        const raw = await res.json();
+        if(!raw) return;
+        const remote = sanitize(raw);
         if(!remote) return;
         const remoteStr = JSON.stringify(remote);
         if(remoteStr !== lastSaved.current) {
